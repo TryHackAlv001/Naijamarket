@@ -1,2 +1,2 @@
-# Naijamarket
-e-commerce platform for Nigerian vendors and salespeople
+# OrderIt
+e-commerce platform for global vendors and buyers
