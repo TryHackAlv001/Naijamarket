@@ -38,6 +38,7 @@ model users {
   sentMessages  messages[]  @relation("SentMessages")
   receivedMessages messages[] @relation("ReceivedMessages")
   notifications notifications[]
+  stockLogs     stock_logs[]
 }
 
 model vendor_profiles {
@@ -90,6 +91,7 @@ model products {
   category categories? @relation(fields: [category_id], references: [id])
   orderItems order_items[]
   reviews    reviews[]
+  stockLogs stock_logs[]
 
   @@index([vendor_id])
   @@index([category_id])
@@ -185,4 +187,20 @@ model notifications {
   @@index([user_id])
   @@index([is_read])
   @@index([created_at])
+}
+
+model stock_logs {
+  id            String   @id @default(uuid()) @db.Uuid
+  product_id    String   @db.Uuid
+  previous_qty  Int
+  new_qty       Int
+  changed_by    String   @db.Uuid
+  changed_at    DateTime @default(now()) @db.Timestamptz
+
+  product products @relation(fields: [product_id], references: [id])
+  user    users    @relation(fields: [changed_by], references: [id])
+
+  @@index([product_id])
+  @@index([changed_by])
+  @@index([changed_at])
 }

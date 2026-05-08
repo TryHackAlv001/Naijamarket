@@ -49,6 +49,15 @@ export interface Product {
   created_at: Date;
 }
 
+export interface StockLog {
+  id: string;
+  product_id: string;
+  previous_qty: number;
+  new_qty: number;
+  changed_by: string;
+  changed_at: Date;
+}
+
 export interface Order {
   id: string;
   buyer_id: string;
