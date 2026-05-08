@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from "react";
-import { Star, ShoppingCart } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { RatingSummary } from "./RatingSummary";
 import { useCartStore } from "@/store/cartStore";
 import { formatCurrency, getCurrencyOption } from "@/constants";
 import { useCurrencyStore } from "@/store/currencyStore";
@@ -49,17 +50,12 @@ export function ProductCard({ product }: ProductCardProps) {
         <h3 className="line-clamp-2 text-lg font-semibold text-slate-900">{product.name}</h3>
         <p className="text-sm text-slate-600">by {product.vendor.full_name}</p>
 
-        <div className="flex items-center gap-1">
-          <div className="flex">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className={`h-4 w-4 ${i < Math.floor(product.rating) ? "fill-amber-400 text-amber-400" : "text-slate-300"}`}
-              />
-            ))}
-          </div>
-          <span className="text-sm text-slate-600">({product.review_count})</span>
-        </div>
+        <RatingSummary
+          rating={product.rating}
+          reviewCount={product.review_count}
+          size="sm"
+          showCount={true}
+        />
 
         <p className="text-xl font-bold text-slate-900">
           {formatCurrency(product.price, currency.code, currency.locale)}

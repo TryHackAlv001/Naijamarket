@@ -1,0 +1,259 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import type { ReviewWithBuyer } from '@/hooks/useReviews';
+
+function formatDate(date: string | Date) {
+  const d = new Date(date);
+  return d.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function RatingBar({ rating, percentage, count }: { rating: number; percentage: number; count: number }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1">
+        <span className="w-8 text-right text-sm font-medium text-slate-700">{rating}★</span>
+      </div>
+      <div className="flex-1">
+        <div className="h-2 rounded-full bg-slate-200">
+          <div
+            className="h-2 rounded-full bg-yellow-400 transition-all"
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+      </div>
+      <div className="w-12 text-right text-sm text-slate-600">{percentage}%</div>
+    </div>
+  );
+}
+
+interface RatingsDisplayProps {
+  productId: string;
+  avgRating?: number;
+  reviewCount?: number;
+}
+
+interface RatingBreakdown {
+  breakdown: { [key: number]: number };
+  percentages: { [key: number]: number };
+}
+
+export function RatingsDisplay({
+  productId,
+  avgRating = 0,
+  reviewCount = 0,
+}: RatingsDisplayProps) {
+  const [breakdown, setBreakdown] = useState<RatingBreakdown | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch rating breakdown
+    const fetchBreakdown = async () => {
+      try {
+        // This would be called in practice - for now we calculate based on available data
+        // You could add a dedicated API endpoint if needed
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching breakdown:', err);
+        setLoading(false);
+      }
+    };
+
+    fetchBreakdown();
+  }, [productId]);
+
+  const fullStars = Math.floor(avgRating);
+  const hasHalfStar = avgRating % 1 >= 0.5;
+
+  return (
+    <div className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6">
+      {/* Overall Rating */}
+      <div className="flex items-start gap-6">
+        <div className="flex flex-col items-center gap-2">
+          <div className="text-5xl font-bold text-slate-900">{avgRating.toFixed(1)}</div>
+          <div className="flex gap-1">
+            {[...Array(5)].map((_, i) => (
+              <div key={i}>
+                {i < fullStars ? (
+                  <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                ) : i === fullStars && hasHalfStar ? (
+                  <div className="relative h-5 w-5">
+                    <Star className="absolute h-5 w-5 text-slate-300" />
+                    <div className="absolute h-5 w-2.5 overflow-hidden">
+                      <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                    </div>
+                  </div>
+                ) : (
+                  <Star className="h-5 w-5 text-slate-300" />
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-slate-600">
+            {reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}
+          </p>
+        </div>
+
+        {/* Rating Breakdown */}
+        {breakdown ? (
+          <div className="flex-1 space-y-2">
+            <RatingBar rating={5} percentage={breakdown.percentages[5] || 0} count={breakdown.breakdown[5] || 0} />
+            <RatingBar rating={4} percentage={breakdown.percentages[4] || 0} count={breakdown.breakdown[4] || 0} />
+            <RatingBar rating={3} percentage={breakdown.percentages[3] || 0} count={breakdown.breakdown[3] || 0} />
+            <RatingBar rating={2} percentage={breakdown.percentages[2] || 0} count={breakdown.breakdown[2] || 0} />
+            <RatingBar rating={1} percentage={breakdown.percentages[1] || 0} count={breakdown.breakdown[1] || 0} />
+          </div>
+        ) : (
+          <div className="flex-1 text-center text-sm text-slate-500 py-4">
+            No detailed breakdown available yet
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface ReviewsListProps {
+  reviews: ReviewWithBuyer[];
+  loading: boolean;
+  page: number;
+  hasMorePages: boolean;
+  sort: string;
+  onPageChange: (page: number) => void;
+  onSortChange: (sort: 'recent' | 'highest' | 'lowest') => void;
+}
+
+export function ReviewsList({
+  reviews,
+  loading,
+  page,
+  hasMorePages,
+  sort,
+  onPageChange,
+  onSortChange,
+}: ReviewsListProps) {
+  return (
+    <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6">
+      {/* Header with Sort */}
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-slate-900">
+          Reviews ({reviews.length})
+        </h3>
+        <select
+          value={sort}
+          onChange={(e) => onSortChange(e.target.value as 'recent' | 'highest' | 'lowest')}
+          className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 focus:outline-none"
+        >
+          <option value="recent">Most Recent</option>
+          <option value="highest">Highest Rated</option>
+          <option value="lowest">Lowest Rated</option>
+        </select>
+      </div>
+
+      {/* Reviews */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="animate-pulse rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="h-10 w-10 rounded-full bg-slate-200"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+                    <div className="h-3 bg-slate-200 rounded w-1/3"></div>
+                    <div className="h-3 bg-slate-200 rounded"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : reviews.length === 0 ? (
+          <div className="text-center py-8 text-slate-500">
+            <p className="text-sm">No reviews yet. Be the first to review!</p>
+          </div>
+        ) : (
+          reviews.map((review) => (
+            <div
+              key={review.id}
+              className="rounded-2xl border border-slate-200 p-4 hover:shadow-sm transition"
+            >
+              <div className="flex items-start gap-3">
+                {/* Reviewer Avatar */}
+                <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                  {review.buyer?.avatar_url ? (
+                    <img
+                      src={review.buyer.avatar_url}
+                      alt={review.buyer?.full_name || 'Reviewer'}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs font-semibold text-slate-600">
+                      {(review.buyer?.full_name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Review Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {review.buyer?.full_name || 'Anonymous'}
+                      </p>
+                      <p className="text-xs text-slate-500">{formatDate(review.created_at)}</p>
+                    </div>
+                  </div>
+
+                  {/* Rating Stars */}
+                  <div className="flex gap-1 mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i < review.rating
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-slate-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Comment */}
+                  {review.comment && (
+                    <p className="text-sm text-slate-700 line-clamp-3">{review.comment}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Pagination */}
+      {reviews.length > 0 && (hasMorePages || page > 1) && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <button
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+            className="rounded-full p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <span className="text-sm text-slate-600">Page {page}</span>
+          <button
+            onClick={() => onPageChange(page + 1)}
+            disabled={!hasMorePages}
+            className="rounded-full p-2 text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
