@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Search, Filter, X, ChevronDown, ChevronUp, Star } from "lucide-react";
-import { locations, formatCurrency } from "@/constants";
+import { CURRENCY_OPTIONS, getCurrencyOption, LOCATIONS, formatCurrency } from "@/constants";
+import { useCurrencyStore } from "@/store/currencyStore";
 import type { Product, Category } from "@/types";
 
 interface SearchFilters {
@@ -56,6 +57,9 @@ function SearchContent() {
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const currencyCode = useCurrencyStore((state) => state.currency);
+  const setCurrency = useCurrencyStore((state) => state.setCurrency);
+  const currency = getCurrencyOption(currencyCode);
 
   // Update URL when filters change
   const updateURL = (newFilters: Partial<SearchFilters>) => {
@@ -257,7 +261,7 @@ function SearchContent() {
 
           {/* Price Range */}
           <div>
-            <h3 className="mb-3 font-medium">Price Range ($)</h3>
+            <h3 className="mb-3 font-medium">Price Range ({currency.symbol})</h3>
             <div className="flex gap-2">
               <Input
                 type="number"
@@ -276,6 +280,25 @@ function SearchContent() {
             </div>
           </div>
 
+          <div>
+            <h3 className="mb-3 font-medium">Currency</h3>
+            <select
+              value={currency.code}
+              onChange={(e) => {
+                const selected = e.target.value;
+                setCurrency(selected);
+                window.localStorage.setItem("currency", selected);
+              }}
+              className="w-full rounded-md border border-slate-300 px-3 py-2"
+            >
+              {CURRENCY_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Location */}
           <div>
             <h3 className="mb-3 font-medium">Location</h3>
@@ -284,8 +307,8 @@ function SearchContent() {
               onChange={(e) => handleFilterChange('state', e.target.value)}
               className="w-full rounded-md border border-slate-300 px-3 py-2"
             >
-              <option value="">All Locations</option>
-              {locations.map((location) => (
+              <option value="">All States</option>
+              {LOCATIONS.map((location) => (
                 <option key={location} value={location}>{location}</option>
               ))}
             </select>
@@ -389,7 +412,7 @@ function SearchContent() {
             })}
             {filters.minPrice && (
               <Badge variant="secondary" className="flex items-center gap-1">
-                Min: {formatCurrency(parseInt(filters.minPrice))}
+                Min: {formatCurrency(parseInt(filters.minPrice), currency.code, currency.locale)}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => handleFilterChange('minPrice', '')}
@@ -398,7 +421,7 @@ function SearchContent() {
             )}
             {filters.maxPrice && (
               <Badge variant="secondary" className="flex items-center gap-1">
-                Max: {formatCurrency(parseInt(filters.maxPrice))}
+                Max: {formatCurrency(parseInt(filters.maxPrice), currency.code, currency.locale)}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => handleFilterChange('maxPrice', '')}

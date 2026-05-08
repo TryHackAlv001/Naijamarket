@@ -1,0 +1,348 @@
+import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { createSupabaseServerClient } from '@/lib/supabase';
+import { StorefrontHeader } from '@/components/layout/StorefrontHeader';
+import { ProductCard } from '@/components/product/ProductCard';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Badge } from '@/components/ui/Badge';
+import { Search, Filter, Package, Star, MapPin, Phone, Mail, Clock } from 'lucide-react';
+import type { Product, VendorProfile, Category } from '@/types';
+
+interface VendorStorePageProps {
+  params: {
+    vendorId: string;
+  };
+}
+
+interface VendorWithStats extends VendorProfile {
+  total_products: number;
+  total_sales: number;
+  rating: number;
+  review_count: number;
+  location?: string;
+  created_at: string;
+  is_verified: boolean;
+}
+
+interface ProductWithCategory extends Product {
+  category: {
+    name: string;
+  };
+}
+
+export async function generateMetadata({ params }: VendorStorePageProps): Promise<Metadata> {
+  try {
+    const supabase = createSupabaseServerClient();
+    const { data: vendor } = await supabase
+      .from('users')
+      .select('shop_name, shop_description')
+      .eq('id', params.vendorId)
+      .single();
+
+    if (!vendor) {
+      return {
+        title: 'Store Not Found',
+      };
+    }
+
+    return {
+      title: `${vendor.shop_name} | OrderIt`,
+      description: vendor.shop_description || `Shop at ${vendor.shop_name} on OrderIt`,
+    };
+  } catch {
+    return {
+      title: 'Vendor Store',
+      description: 'Browse products from this vendor',
+    };
+  }
+}
+
+export async function generateStaticParams() {
+  try {
+    const supabase = createSupabaseServerClient();
+
+    // Get top 50 vendors for ISR
+    const { data: vendors } = await supabase
+      .from('users')
+      .select('id')
+      .eq('role', 'vendor')
+      .order('total_sales', { ascending: false })
+      .limit(50);
+
+    if (!vendors) return [];
+
+    return vendors.map((vendor) => ({
+      vendorId: vendor.id,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export const revalidate = 3600; // ISR: revalidate every hour
+
+async function getVendorData(vendorId: string) {
+  const supabase = createSupabaseServerClient();
+
+  const { data: vendor, error: vendorError } = await supabase
+    .from('users')
+    .select(`
+      *,
+      _count:products(count)
+    `)
+    .eq('id', vendorId)
+    .eq('role', 'vendor')
+    .single();
+
+  if (vendorError || !vendor) {
+    return null;
+  }
+
+  // Get vendor stats
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, rating, review_count')
+    .eq('vendor_id', vendorId)
+    .eq('is_active', true);
+
+  const totalProducts = products?.length || 0;
+  const totalSales = vendor.total_sales || 0;
+  const avgRating = products && products.length > 0
+    ? products.reduce((sum, p) => sum + p.rating, 0) / products.length
+    : 0;
+  const totalReviews = products?.reduce((sum, p) => sum + p.review_count, 0) || 0;
+
+  return {
+    ...vendor,
+    total_products: totalProducts,
+    total_sales: totalSales,
+    rating: avgRating,
+    review_count: totalReviews,
+  } as VendorWithStats;
+}
+
+async function getVendorProducts(vendorId: string, search?: string, categoryId?: string) {
+  const supabase = createSupabaseServerClient();
+
+  let query = supabase
+    .from('products')
+    .select(`
+      *,
+      category:categories(name)
+    `)
+    .eq('vendor_id', vendorId)
+    .eq('is_active', true);
+
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+  }
+
+  if (categoryId) {
+    query = query.eq('category_id', categoryId);
+  }
+
+  const { data: products } = await query
+    .order('created_at', { ascending: false });
+
+  return products as ProductWithCategory[] || [];
+}
+
+async function getVendorCategories(vendorId: string) {
+  const supabase = createSupabaseServerClient();
+
+  const { data: categories } = await supabase
+    .from('categories')
+    .select(`
+      *,
+      _count:products(count)
+    `)
+    .eq('products.vendor_id', vendorId)
+    .eq('products.is_active', true);
+
+  return categories || [];
+}
+
+export default async function VendorStorePage({ params }: VendorStorePageProps) {
+  const vendor = await getVendorData(params.vendorId);
+
+  if (!vendor) {
+    notFound();
+  }
+
+  const products = await getVendorProducts(params.vendorId);
+  const categories = await getVendorCategories(params.vendorId);
+
+  return (
+    <div className="space-y-8">
+      {/* Storefront Header */}
+      <StorefrontHeader vendor={vendor} />
+
+      {/* Tabs */}
+      <div className="border-b border-slate-200">
+        <div className="flex gap-8 overflow-x-auto">
+          {['products', 'categories', 'about'].map((tab) => (
+            <button
+              key={tab}
+              className={`border-b-2 px-4 py-4 font-medium capitalize transition whitespace-nowrap ${
+                tab === 'products'
+                  ? 'border-emerald-600 text-emerald-600'
+                  : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {tab === 'products' ? 'All Products' : tab === 'categories' ? 'Categories' : 'About'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="space-y-8">
+        {/* Products Tab */}
+        <div className="space-y-6">
+          {/* Search and Filter */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Search products..."
+                  className="w-80 pl-10"
+                />
+              </div>
+              <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+            <p className="text-sm text-slate-600">
+              {products.length} product{products.length !== 1 ? 's' : ''} available
+            </p>
+          </div>
+
+          {/* Products Grid */}
+          {products.length === 0 ? (
+            <div className="py-20 text-center">
+              <Package className="mx-auto h-16 w-16 text-slate-400" />
+              <h3 className="mt-4 text-xl font-semibold text-slate-900">No products yet</h3>
+              <p className="mt-2 text-slate-600">
+                This vendor hasn't added any products to their store yet.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={{
+                    ...product,
+                    vendor: {
+                      full_name: vendor.shop_name,
+                    },
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Categories Tab */}
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold text-slate-900">Product Categories</h2>
+          {categories.length === 0 ? (
+            <div className="py-12 text-center">
+              <Package className="mx-auto h-12 w-12 text-slate-400" />
+              <p className="mt-4 text-slate-600">No categories available yet.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {categories.map((category) => (
+                <div
+                  key={category.id}
+                  className="rounded-lg border border-slate-200 p-6 hover:border-emerald-300 transition"
+                >
+                  <h3 className="font-semibold text-slate-900">{category.name}</h3>
+                  <p className="mt-2 text-sm text-slate-600">
+                    {category._count?.products || 0} products
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* About Tab */}
+        <div className="space-y-8">
+          <div className="grid gap-8 lg:grid-cols-2">
+            {/* Shop Description */}
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-slate-900">About {vendor.shop_name}</h2>
+              <div className="prose prose-sm max-w-none text-slate-700">
+                {vendor.shop_description ? (
+                  <p>{vendor.shop_description}</p>
+                ) : (
+                  <p>
+                    Welcome to {vendor.shop_name}! We are committed to providing quality products
+                    and excellent customer service. Browse our collection of carefully selected items.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Contact & Policies */}
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Contact Information</h3>
+                <div className="space-y-3">
+                  {vendor.location && (
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-5 w-5 text-slate-400" />
+                      <span className="text-slate-700">{vendor.location}</span>
+                    </div>
+                  )}
+                  {vendor.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-5 w-5 text-slate-400" />
+                      <span className="text-slate-700">{vendor.phone}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-slate-400" />
+                    <span className="text-slate-700">Contact via message</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 mb-4">Store Policies</h3>
+                <div className="space-y-3 text-sm text-slate-700">
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-5 w-5 text-slate-400" />
+                    <div>
+                      <p className="font-medium">Processing Time</p>
+                      <p>Orders processed within 1-2 business days</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Package className="h-5 w-5 text-slate-400" />
+                    <div>
+                      <p className="font-medium">Shipping</p>
+                      <p>Free shipping on orders over ₦50,000</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Star className="h-5 w-5 text-slate-400" />
+                    <div>
+                      <p className="font-medium">Returns</p>
+                      <p>30-day return policy on all items</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

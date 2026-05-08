@@ -1,72 +1,125 @@
 'use client';
 
-import { Star, MapPin, Package, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import Link from "next/link";
-import type { VendorProfile } from "@/types";
+import Link from 'next/link';
+import Image from 'next/image';
+import { Star, MapPin, Package, MessageSquare, Heart } from 'lucide-react';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import type { VendorProfile } from '@/types';
 
 interface VendorCardProps {
-  vendor: VendorProfile & { user: { full_name: string }; _count: { products: number } };
+  vendor: VendorProfile & {
+    total_products?: number;
+    total_sales?: number;
+    rating: number;
+    review_count?: number;
+    location?: string;
+    created_at: string;
+    is_verified: boolean;
+    user?: { full_name: string };
+    _count?: { products: number };
+  };
+  showFollowButton?: boolean;
 }
 
-export function VendorCard({ vendor }: VendorCardProps) {
-  return (
-    <article className="group rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-lg">
-      <div className="flex items-start gap-4">
-        <div className="aspect-square w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">
-          {vendor.logo_url ? (
-            <img
-              src={vendor.logo_url}
-              alt={vendor.shop_name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-slate-400 text-sm">Logo</div>
-          )}
-        </div>
+export function VendorCard({ vendor, showFollowButton = true }: VendorCardProps) {
+  // Handle both data structures (users table vs vendor_profiles table)
+  const shopName = vendor.shop_name || 'Vendor Store';
+  const totalProducts = vendor.total_products || vendor._count?.products || 0;
+  const totalSales = vendor.total_sales || 0;
+  const reviewCount = vendor.review_count || 0;
+  const vendorLocation = vendor.location || '';
+  const createdAt = vendor.created_at;
+  const isVerified = vendor.is_verified || false;
+    <div className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-lg">
+      {/* Banner Image */}
+      <div className="relative h-32 overflow-hidden bg-slate-100">
+        {vendor.banner_url ? (
+          <Image
+            src={vendor.banner_url}
+            alt={`${shopName} banner`}
+            fill
+            className="object-cover group-hover:scale-105 transition"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center bg-gradient-to-r from-emerald-400 to-emerald-600">
+            <Package className="h-12 w-24 text-white" />
+          </div>
+        )}
+        {isVerified && (
+          <Badge className="absolute right-4 top-4 bg-blue-100 text-blue-800">
+            Verified
+          </Badge>
+        )}
+      </div>
 
-        <div className="flex-1 space-y-2">
-          <div className="flex items-start justify-between">
-            <h3 className="text-lg font-semibold text-slate-900">{vendor.shop_name}</h3>
-            {vendor.is_verified && (
-              <Badge className="bg-emerald-100 text-emerald-800">Verified</Badge>
+      {/* Vendor Info */}
+      <div className="p-6">
+        <div className="flex items-start gap-4">
+          {/* Logo */}
+          <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border-4 border-white bg-slate-100 shadow-sm">
+            {vendor.logo_url ? (
+              <Image
+                src={vendor.logo_url}
+                alt={`${shopName} logo`}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center bg-emerald-100 text-emerald-600">
+                <Package className="h-8 w-8" />
+              </div>
             )}
           </div>
 
-          <p className="text-sm text-slate-600 line-clamp-2">{vendor.shop_description}</p>
+          {/* Details */}
+          <div className="flex-1 min-w-0">
+            <Link href={`/vendor/${vendor.id}/store`}>
+              <h3 className="text-lg font-semibold text-slate-900 hover:text-emerald-600 transition">
+                {shopName}
+              </h3>
+            </Link>
 
-          <div className="flex items-center gap-4 text-sm text-slate-500">
-            <div className="flex items-center gap-1">
-              <MapPin className="h-4 w-4" />
-              {vendor.location}
+            {vendorLocation && (
+              <div className="flex items-center gap-1 mt-1 text-sm text-slate-600">
+                <MapPin className="h-4 w-4" />
+                <span>{vendorLocation}</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-4 mt-2 text-sm text-slate-600">
+              <div className="flex items-center gap-1">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                <span>{vendor.rating.toFixed(1)}</span>
+                <span>({reviewCount})</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Package className="h-4 w-4" />
+                <span>{totalProducts} products</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <Package className="h-4 w-4" />
-              {vendor._count.products} products
-            </div>
+
+            <p className="mt-2 text-sm text-slate-600 line-clamp-2">
+              {vendor.shop_description || 'Quality products from a trusted seller.'}
+            </p>
+              {vendor.shop_description || 'Quality products from a trusted seller.'}
+            </p>
           </div>
+        </div>
 
-          <div className="flex items-center gap-1">
-            <div className="flex">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`h-4 w-4 ${i < Math.floor(vendor.rating) ? "fill-amber-400 text-amber-400" : "text-slate-300"}`}
-                />
-              ))}
-            </div>
-            <span className="text-sm text-slate-600">({vendor.rating.toFixed(1)})</span>
-          </div>
-
-          <Link href={`/vendor/${vendor.id}`}>
-            <Button className="w-full">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Visit Store
-            </Button>
+        {/* Action Buttons */}
+        <div className="mt-4 flex gap-2">
+          <Link href={`/vendor/${vendor.id}/store`} className="flex-1">
+            <Button className="w-full">Visit Store</Button>
           </Link>
+          {showFollowButton && (
+            <Button variant="outline" className="flex-1">
+              <Heart className="mr-2 h-4 w-4" />
+              Follow
+            </Button>
+          )}
         </div>
       </div>
-    </article>
+    </div>
   );
 }

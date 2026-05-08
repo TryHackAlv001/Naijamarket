@@ -5,7 +5,8 @@ import { Star, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useCartStore } from "@/store/cartStore";
-import { formatCurrency } from "@/constants";
+import { formatCurrency, getCurrencyOption } from "@/constants";
+import { useCurrencyStore } from "@/store/currencyStore";
 import type { Product } from "@/types";
 
 interface ProductCardProps {
@@ -22,6 +23,8 @@ export function ProductCard({ product }: ProductCardProps) {
     setTimeout(() => setIsAdding(false), 600);
   };
 
+  const currencyCode = useCurrencyStore((state) => state.currency);
+  const currency = getCurrencyOption(currencyCode);
   const isOutOfStock = product.stock_quantity === 0;
 
   return (
@@ -58,7 +61,9 @@ export function ProductCard({ product }: ProductCardProps) {
           <span className="text-sm text-slate-600">({product.review_count})</span>
         </div>
 
-        <p className="text-xl font-bold text-slate-900">{formatCurrency(product.price)}</p>
+        <p className="text-xl font-bold text-slate-900">
+          {formatCurrency(product.price, currency.code, currency.locale)}
+        </p>
 
         <Button
           onClick={handleAddToCart}
