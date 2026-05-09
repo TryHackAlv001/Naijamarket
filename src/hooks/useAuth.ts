@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { supabaseBrowserClient } from "@/lib/supabase";
+import { supabaseBrowserClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/store/authStore";
 import type { AuthProfile, User, VendorProfile } from "@/types";
 

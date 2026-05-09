@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdminClient } from '@/lib/supabase-admin';
+import { getRatingBreakdown } from '@/lib/reviews';
 
 export async function GET(
   request: NextRequest,
@@ -47,10 +48,14 @@ export async function GET(
       return NextResponse.json({ error: 'Failed to fetch reviews' }, { status: 500 });
     }
 
+    // Get rating breakdown
+    const breakdown = await getRatingBreakdown(productId);
+
     return NextResponse.json({
       reviews: data || [],
       total: count || 0,
       hasMore: (offset + limit) < (count || 0),
+      breakdown,
     });
   } catch (error) {
     console.error('Error in reviews GET API:', error);

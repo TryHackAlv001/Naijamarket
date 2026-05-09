@@ -89,3 +89,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// GET endpoint to check if user can review a product
+export async function GET(request: NextRequest) {
+  try {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const token = authHeader.substring(7);
+    const { data: { user }, error: authError } = await supabaseAdminClient.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const productId = searchParams.get('productId');
+
+    if (!productId) {
+      return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
+    }
+
+    // Check if user has purchased the product
+    const hasPurchased = await validateBuyerPurchased(user.id, productId);
+
+    // Check if user has already reviewed
+    const alreadyReviewed = await hasBuyerReviewedProduct(user.id, productId);
+
+    return NextResponse.json({
+      canReview: hasPurchased && !alreadyReviewed,
+      hasPurchased,
+      alreadyReviewed,
+    });
+  } catch (error) {
+    console.error('Error in reviews GET API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

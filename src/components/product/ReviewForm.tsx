@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Star, AlertCircle } from 'lucide-react';
+import { supabaseBrowserClient } from '@/lib/supabase/client';
 
 interface ReviewFormProps {
   productId: string;
@@ -42,11 +43,16 @@ export function ReviewForm({
     setLoading(true);
 
     try {
+      const { data: { session } } = await supabaseBrowserClient.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('You must be logged in to submit a review');
+      }
+
       const response = await fetch('/api/reviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ productId, rating, comment }),
       });

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, MapPin, Package, MessageSquare, Heart } from 'lucide-react';
+import { Star, MapPin, Package, Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import type { VendorProfile } from '@/types';
@@ -23,14 +23,13 @@ interface VendorCardProps {
 }
 
 export function VendorCard({ vendor, showFollowButton = true }: VendorCardProps) {
-  // Handle both data structures (users table vs vendor_profiles table)
   const shopName = vendor.shop_name || 'Vendor Store';
   const totalProducts = vendor.total_products || vendor._count?.products || 0;
-  const totalSales = vendor.total_sales || 0;
   const reviewCount = vendor.review_count || 0;
   const vendorLocation = vendor.location || '';
-  const createdAt = vendor.created_at;
   const isVerified = vendor.is_verified || false;
+
+  return (
     <div className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-lg">
       {/* Banner Image */}
       <div className="relative h-32 overflow-hidden bg-slate-100">
@@ -100,8 +99,6 @@ export function VendorCard({ vendor, showFollowButton = true }: VendorCardProps)
             </div>
 
             <p className="mt-2 text-sm text-slate-600 line-clamp-2">
-              {vendor.shop_description || 'Quality products from a trusted seller.'}
-            </p>
               {vendor.shop_description || 'Quality products from a trusted seller.'}
             </p>
           </div>

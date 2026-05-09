@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { ReviewWithBuyer } from '@/hooks/useReviews';
+import type { ReviewWithBuyer, RatingBreakdown } from '@/hooks/useReviews';
 
 function formatDate(date: string | Date) {
   const d = new Date(date);
@@ -36,36 +35,15 @@ interface RatingsDisplayProps {
   productId: string;
   avgRating?: number;
   reviewCount?: number;
-}
-
-interface RatingBreakdown {
-  breakdown: { [key: number]: number };
-  percentages: { [key: number]: number };
+  breakdown?: RatingBreakdown | null;
 }
 
 export function RatingsDisplay({
   productId,
   avgRating = 0,
   reviewCount = 0,
+  breakdown = null,
 }: RatingsDisplayProps) {
-  const [breakdown, setBreakdown] = useState<RatingBreakdown | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Fetch rating breakdown
-    const fetchBreakdown = async () => {
-      try {
-        // This would be called in practice - for now we calculate based on available data
-        // You could add a dedicated API endpoint if needed
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching breakdown:', err);
-        setLoading(false);
-      }
-    };
-
-    fetchBreakdown();
-  }, [productId]);
 
   const fullStars = Math.floor(avgRating);
   const hasHalfStar = avgRating % 1 >= 0.5;

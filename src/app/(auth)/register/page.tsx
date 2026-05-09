@@ -10,33 +10,34 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { toast, Toaster } from "react-hot-toast";
 
-const phoneRegex = /^\+[1-9]\d{1,14}$/;
-
 const buyerSchema = z.object({
   role: z.literal("buyer"),
-  fullName: z.string().min(2, "Full name is required."),
-  email: z.string().email("Enter a valid email."),
-  phone: z.string().regex(phoneRegex, "Enter a valid phone number."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords must match.",
-  path: ["confirmPassword"],
+  full_name: z.string().min(2, "Full name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().regex(/^(\+234|0)[789][01]\d{8}$/, "Invalid Nigerian phone number"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirm_password: z.string(),
+  shop_name: z.string().optional(),
+  shop_description: z.string().optional(),
+  location: z.string().optional(),
+}).refine((data) => data.password === data.confirm_password, {
+  message: "Passwords do not match",
+  path: ["confirm_password"],
 });
 
 const vendorSchema = z.object({
   role: z.literal("vendor"),
-  fullName: z.string().min(2, "Full name is required."),
-  email: z.string().email("Enter a valid email."),
-  phone: z.string().regex(phoneRegex, "Enter a valid phone number."),
-  shopName: z.string().min(2, "Shop name is required."),
-  shopDescription: z.string().optional(),
-  location: z.string().min(2, "Location is required."),
-  password: z.string().min(6, "Password must be at least 6 characters."),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords must match.",
-  path: ["confirmPassword"],
+  full_name: z.string().min(2, "Full name is required"),
+  email: z.string().email("Invalid email address"),
+  phone: z.string().regex(/^(\+234|0)[789][01]\d{8}$/, "Invalid Nigerian phone number"),
+  shop_name: z.string().min(2, "Shop name is required"),
+  shop_description: z.string().min(10, "Description must be at least 10 characters"),
+  location: z.string().min(1, "Please select your state"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirm_password: z.string(),
+}).refine((data) => data.password === data.confirm_password, {
+  message: "Passwords do not match",
+  path: ["confirm_password"],
 });
 
 const registerSchema = z.discriminatedUnion("role", [buyerSchema, vendorSchema]);
@@ -58,19 +59,18 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       role: "buyer",
-      fullName: "",
+      full_name: "",
       email: "",
       phone: "",
       password: "",
-      confirmPassword: "",
-      shopName: "",
-      shopDescription: "",
+      confirm_password: "",
+      shop_name: "",
+      shop_description: "",
       location: "",
-    },
+    } as any,
   });
 
-  const role = watch("role") as "buyer" | "vendor";
-
+  const role = watch("role");
   const activeRole = useMemo(() => role || selectedRole, [role, selectedRole]);
 
   const onSubmit = async (values: RegisterValues) => {
@@ -78,18 +78,17 @@ export default function RegisterPage() {
       await signUp(
         values.email,
         values.password,
-        values.fullName,
+        values.full_name,
         values.phone,
         values.role,
         values.role === "vendor"
           ? {
-              shopName: values.shopName,
-              shopDescription: values.shopDescription,
-              location: values.location,
+              shopName: values.shop_name!,
+              shopDescription: values.shop_description!,
+              location: values.location!,
             }
           : undefined
       );
-
       toast.success("Account created successfully.");
       router.push(values.role === "vendor" ? "/vendor/dashboard" : "/marketplace");
     } catch (error: any) {
@@ -99,7 +98,7 @@ export default function RegisterPage() {
 
   const chooseRole = (newRole: "buyer" | "vendor") => {
     setSelectedRole(newRole);
-    setValue("role", newRole, { shouldDirty: true, shouldTouch: true });
+    setValue("role", newRole as any, { shouldDirty: true, shouldTouch: true });
   };
 
   return (
@@ -116,7 +115,7 @@ export default function RegisterPage() {
                 Create your account
               </h1>
               <p className="mt-4 max-w-xl text-sm text-slate-600 sm:text-base">
-                Choose buyer or vendor registration and join a global marketplace for buyers and sellers.
+                Join thousands of Nigerian buyers and vendors on Orderit.
               </p>
             </div>
 
@@ -127,10 +126,12 @@ export default function RegisterPage() {
                   <button
                     key={option}
                     type="button"
-                    onClick={() => {
-                      chooseRole(option);
-                    }}
-                    className={`rounded-full px-5 py-2 text-sm font-semibold transition ${activeRole === option ? "bg-[#1a7a4a] text-white shadow" : "text-slate-700 hover:bg-slate-100"}`}
+                    onClick={() => chooseRole(option)}
+                    className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
+                      activeRole === option
+                        ? "bg-[#1a7a4a] text-white shadow"
+                        : "text-slate-700 hover:bg-slate-100"
+                    }`}
                   >
                     I&apos;m a {option === "buyer" ? "Buyer" : "Vendor"}
                   </button>
@@ -141,61 +142,64 @@ export default function RegisterPage() {
                 <div className="grid gap-5">
                   <label className="space-y-2 text-sm font-medium text-slate-700">
                     Full name
-                    <Input type="text" {...register("fullName")} placeholder="John Doe" />
-                    {errors.fullName ? <p className="text-sm text-red-600">{errors.fullName.message}</p> : null}
+                    <Input type="text" {...register("full_name")} placeholder="John Doe" />
+                    {errors.full_name && <p className="text-sm text-red-600">{errors.full_name.message}</p>}
                   </label>
 
                   <label className="space-y-2 text-sm font-medium text-slate-700">
                     Email address
                     <Input type="email" {...register("email")} placeholder="you@example.com" />
-                    {errors.email ? <p className="text-sm text-red-600">{errors.email.message}</p> : null}
+                    {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
                   </label>
 
                   <label className="space-y-2 text-sm font-medium text-slate-700">
                     Phone number
-                    <Input type="tel" {...register("phone")} placeholder="+2348012345678" />
-                    {errors.phone ? <p className="text-sm text-red-600">{errors.phone.message}</p> : null}
+                    <Input type="tel" {...register("phone")} placeholder="08012345678" />
+                    {errors.phone && <p className="text-sm text-red-600">{errors.phone.message}</p>}
                   </label>
 
-                  {activeRole === "vendor" ? (
+                  {activeRole === "vendor" && (
                     <>
                       <label className="space-y-2 text-sm font-medium text-slate-700">
                         Shop name
-                        <Input type="text" {...register("shopName")} placeholder="My Online Shop" />
-                        {errors.shopName ? <p className="text-sm text-red-600">{errors.shopName.message}</p> : null}
+                        <Input type="text" {...register("shop_name")} placeholder="My Online Shop" />
+                        {errors.shop_name && <p className="text-sm text-red-600">{errors.shop_name.message}</p>}
                       </label>
 
                       <label className="space-y-2 text-sm font-medium text-slate-700">
                         Shop description
-                        <Input type="text" {...register("shopDescription")} placeholder="What you sell and why customers love you" />
-                        {errors.shopDescription ? <p className="text-sm text-red-600">{errors.shopDescription.message}</p> : null}
+                        <Input type="text" {...register("shop_description")} placeholder="What you sell and why customers love you" />
+                        {errors.shop_description && <p className="text-sm text-red-600">{errors.shop_description.message}</p>}
                       </label>
 
                       <label className="space-y-2 text-sm font-medium text-slate-700">
                         State / location
-                        <Input type="text" {...register("location")} placeholder="New York" />
-                        {errors.location ? <p className="text-sm text-red-600">{errors.location.message}</p> : null}
+                        <Input type="text" {...register("location")} placeholder="Lagos" />
+                        {errors.location && <p className="text-sm text-red-600">{errors.location.message}</p>}
                       </label>
                     </>
-                  ) : null}
+                  )}
 
                   <label className="space-y-2 text-sm font-medium text-slate-700">
                     Password
                     <Input type="password" {...register("password")} placeholder="Create a password" />
-                    {errors.password ? <p className="text-sm text-red-600">{errors.password.message}</p> : null}
+                    {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
                   </label>
 
                   <label className="space-y-2 text-sm font-medium text-slate-700">
                     Confirm password
-                    <Input type="password" {...register("confirmPassword")} placeholder="Repeat password" />
-                    {errors.confirmPassword ? <p className="text-sm text-red-600">{errors.confirmPassword.message}</p> : null}
+                    <Input type="password" {...register("confirm_password")} placeholder="Repeat password" />
+                    {errors.confirm_password && <p className="text-sm text-red-600">{errors.confirm_password.message}</p>}
                   </label>
                 </div>
               </div>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-slate-600">
-                  Already registered? <a href="/login" className="font-semibold text-emerald-800 hover:text-emerald-900">Sign in</a>
+                  Already registered?{" "}
+                  <a href="/login" className="font-semibold text-emerald-800 hover:text-emerald-900">
+                    Sign in
+                  </a>
                 </p>
                 <Button className="bg-[#1a7a4a] hover:bg-emerald-700" type="submit" disabled={isLoading}>
                   {isLoading ? "Creating account..." : "Create account"}
@@ -208,15 +212,15 @@ export default function RegisterPage() {
             <div className="space-y-6">
               <div className="rounded-3xl bg-white/10 p-5">
                 <p className="text-sm uppercase tracking-[0.3em] text-emerald-200">OrderIt</p>
-                <h2 className="mt-4 text-3xl font-semibold">Sell with confidence or shop global.</h2>
+                <h2 className="mt-4 text-3xl font-semibold">Buy and sell across Nigeria.</h2>
               </div>
               <ul className="space-y-4 text-sm leading-7 text-emerald-100">
                 <li>• Fast onboarding for buyers and vendors.</li>
-                <li>• Built for global payments and logistics.</li>
-                <li>• Modern store dashboard with worldwide support.</li>
+                <li>• Pay with Paystack or Flutterwave.</li>
+                <li>• Modern vendor dashboard with full order tracking.</li>
               </ul>
               <p className="rounded-3xl bg-white/10 p-5 text-sm text-slate-200">
-                Choose the right path and start transacting with trusted sellers around the world.
+                Join thousands of Nigerians already buying and selling on Orderit.
               </p>
             </div>
           </div>

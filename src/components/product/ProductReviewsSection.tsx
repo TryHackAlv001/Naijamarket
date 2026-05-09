@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useProductReviews } from '@/hooks/useReviews';
+import { supabaseBrowserClient } from '@/lib/supabase/client';
 import { ReviewForm } from './ReviewForm';
 import { RatingsDisplay, ReviewsList } from './ReviewsDisplay';
 
@@ -26,6 +27,7 @@ export function ProductReviewsSection({
     total,
     page,
     sort,
+    breakdown,
     setPage,
     setSort,
     hasMorePages,
@@ -37,41 +39,42 @@ export function ProductReviewsSection({
   const [canReview, setCanReview] = useState(false);
   const [checkingPurchase, setCheckingPurchase] = useState(true);
 
-  // Check if user has already reviewed and if they can review
+  // Check if user can review this product
   useEffect(() => {
-    const checkReviewStatus = async () => {
+    const checkReviewEligibility = async () => {
       if (!user || !productId) {
         setCanReview(false);
+        setAlreadyReviewed(false);
         setCheckingPurchase(false);
         return;
       }
 
       try {
-        // Check if user already reviewed this product
-        const existingReview = reviews.find(r => r.buyer_id === user.id);
-        setAlreadyReviewed(!!existingReview);
+        const response = await fetch(`/api/reviews?productId=${productId}`, {
+          headers: {
+            'Authorization': `Bearer ${(await supabaseBrowserClient.auth.getSession()).data.session?.access_token}`,
+          },
+        });
 
-        // If already reviewed, they can't review again
-        if (existingReview) {
+        if (response.ok) {
+          const data = await response.json();
+          setCanReview(data.canReview);
+          setAlreadyReviewed(data.alreadyReviewed);
+        } else {
           setCanReview(false);
-          setCheckingPurchase(false);
-          return;
+          setAlreadyReviewed(false);
         }
-
-        // Try to submit a review - if it fails with 403, they can't review
-        // We'll just assume they can review if they're trying to submit
-        setCanReview(true);
-        setCheckingPurchase(false);
       } catch (error) {
-        console.error('Error checking review status:', error);
+        console.error('Error checking review eligibility:', error);
+        setCanReview(false);
+        setAlreadyReviewed(false);
+      } finally {
         setCheckingPurchase(false);
       }
     };
 
-    if (reviews.length > 0) {
-      checkReviewStatus();
-    }
-  }, [user, productId, reviews]);
+    checkReviewEligibility();
+  }, [user, productId]);
 
   const handleReviewSubmitted = () => {
     setAlreadyReviewed(true);
@@ -86,6 +89,7 @@ export function ProductReviewsSection({
         productId={productId}
         avgRating={avgRating}
         reviewCount={total}
+        breakdown={breakdown}
       />
 
       {/* Review Form */}

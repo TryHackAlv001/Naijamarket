@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabaseBrowserClient } from '@/lib/supabase';
+import { supabaseBrowserClient } from '@/lib/supabase/client';
 import type { Review } from '@/types';
 
 export interface ReviewWithBuyer extends Review {
@@ -12,6 +12,11 @@ export interface ReviewWithBuyer extends Review {
   };
 }
 
+export interface RatingBreakdown {
+  breakdown: { [key: number]: number };
+  percentages: { [key: number]: number };
+}
+
 export function useProductReviews(productId?: string) {
   const [reviews, setReviews] = useState<ReviewWithBuyer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -19,6 +24,7 @@ export function useProductReviews(productId?: string) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<'recent' | 'highest' | 'lowest'>('recent');
+  const [breakdown, setBreakdown] = useState<RatingBreakdown | null>(null);
 
   const limit = 10;
 
@@ -41,6 +47,7 @@ export function useProductReviews(productId?: string) {
       const data = await response.json();
       setReviews(data.reviews || []);
       setTotal(data.total || 0);
+      setBreakdown(data.breakdown || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch reviews');
     } finally {
@@ -87,6 +94,7 @@ export function useProductReviews(productId?: string) {
     total,
     page,
     sort,
+    breakdown,
     setPage,
     setSort,
     hasMorePages,

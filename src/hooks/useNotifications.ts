@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabaseBrowserClient } from '@/lib/supabase';
+import { supabaseBrowserClient } from '@/lib/supabase/client';
 import type { Notification } from '@/types';
 
 export function useNotifications(userId?: string) {

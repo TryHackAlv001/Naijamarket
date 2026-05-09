@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function createOrderNotification(buyerId: string, title: string, body: string, orderId: string) {
   const supabase = createSupabaseServerClient();
